@@ -4,6 +4,8 @@ import statsmodels.api as sm
 from statsmodels.tools import add_constant
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
 
+from src.data_models.model_eval import MPE
+
 
 def get_SLR_analysis_results(
         X, y, selected_criteria=None,
@@ -53,12 +55,17 @@ class MyLR:
         self.fitted_model = None
         self.train_result_tables = None
 
+        # train
         self.train_X = train_X
+        self.train_N, self.D = train_X.shape
         self.train_y = train_y
-        self.train_predict_y = None
-        self.N, self.D = train_X.shape
+        self.train_pred_y = None
 
-        # print(self.N, self.D)
+        # test
+        self.test_X = None
+        self.test_y = None
+        self.test_pred_y = None
+
         # train linear regression model
         self.train()
 
@@ -66,13 +73,15 @@ class MyLR:
         # !!! Don't forget to add bias column
         self.model = sm.OLS(self.train_y, add_constant(self.train_X))
         self.fitted_model = self.model.fit()
-        self.train_predict_y = self.fitted_model.predict(add_constant(self.train_X))
+        self.train_pred_y = self.fitted_model.predict(add_constant(self.train_X))
         self.train_result_tables = self.fitted_model.summary2().tables
-        
 
     def predict(self, X):
         X = sm.add_constant(X)
         return self.fitted_model.predict(X)
+
+    def forecast(self, test_X, test_y):
+        pass
 
     def get_train_summary(self):
         summary = self.fitted_model.summary2()
@@ -91,20 +100,18 @@ class MyLR:
         res_df = res_df.iloc[1:]
 
         compulsory_cols = list(res_df.columns[:6])
-        
-        # display(res_df)
 
+        # add customized metrics here
+        res_df['train_RMSE'] = np.sqrt(mean_squared_error(self.train_y, self.train_pred_y))
+        res_df['train_R2'] = r2_score(self.train_y, self.train_pred_y)
+        res_df['train_MPE'] = MPE(self.train_y, self.train_pred_y)
+        res_df['train_MAPE'] = mean_absolute_percentage_error(self.train_y, self.train_pred_y)
+
+        # display(res_df)
         if selected_metrics:
             res_df = res_df[compulsory_cols + selected_metrics]
 
         return res_df
 
-    def get_res_tables(self):
-        return self.train_result_tables
-
-    def adj_R2(self, real_y, predict_y):
-        R2 = self.R2(real_y, predict_y)
-        adj_r2_score = 1 - (1 - R2) * (self.N - 1) / (self.N - self.D - 1)
-        return adj_r2_score
 
 

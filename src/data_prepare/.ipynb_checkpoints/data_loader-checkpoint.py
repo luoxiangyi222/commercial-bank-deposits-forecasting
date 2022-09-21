@@ -23,16 +23,22 @@ def load_data(filename, insample_end_year):
         ]
     )
 
+    # rename long name into shorter name
     df = df.rename(
         columns={
             "lag3q_Age Dependency Ratio: Residents Aged Under 15 Years And 65 Years Per Hundred Residents Aged 15-64 Years (Number)": "lag3q_Age Dependency Ratio (15-64 Years)"
         }
     )
 
-    # add quarter information
+    # add year and quarter number 
     # TODO: one hot encoding for Quarter
     df["Year"] = df["Data Series"].apply(lambda s: int(s.split(" ")[0]))
     df["Qrt"] = df["Data Series"].apply(lambda s: int(s.split(" ")[1][0]))
+    
+    # cycling encoding for quarter number
+    df["Qrt"] = (
+    df["Qrt"].apply(lambda x: np.sin(x * (1 / 4) * (2 * np.pi))).astype("int32")
+    )
     
     df=df.dropna().reset_index(drop=True)
     

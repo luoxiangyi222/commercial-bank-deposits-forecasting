@@ -1,16 +1,17 @@
 import pandas as pd
+import numpy as np
 
-def load_data(filename, insample_end_year):
-    
+
+def load_data(filename, insample_end_year: int):
     original_df = pd.read_csv(filename)
 
     df = original_df.copy()
 
-    ###### drop some useless columns
+    # Drop some useless columns
     df = df.drop(
         columns=[
-            "domestic_debt",  # remove, use total natinal debt
-            "external_debt",  # remove, use total natinal debt
+            "domestic_debt",  # remove, use total national debt
+            "external_debt",  # remove, use total national debt
             "Compound SORA - 1 month",  # remove since lack of data
             "Compound SORA - 3 month",  # remove since lack of data
             "Compound SORA - 6 month",  # remove since lack of data
@@ -23,25 +24,33 @@ def load_data(filename, insample_end_year):
         ]
     )
 
+    # rename long name into shorter name
     df = df.rename(
         columns={
-            "lag3q_Age Dependency Ratio: Residents Aged Under 15 Years And 65 Years Per Hundred Residents Aged 15-64 Years (Number)": "lag3q_Age Dependency Ratio (15-64 Years)"
+            "lag3q_Age Dependency Ratio: Residents Aged Under 15 Years And 65 Years Per Hundred Residents Aged 15-64 "
+            "Years (Number)": "lag3q_Age Dependency Ratio (15-64 Years) "
         }
     )
 
-    # add quarter information
-    # TODO: one hot encoding for Quarter
+    # Add year and quarter number
     df["Year"] = df["Data Series"].apply(lambda s: int(s.split(" ")[0]))
     df["Qrt"] = df["Data Series"].apply(lambda s: int(s.split(" ")[1][0]))
-    
-    df=df.dropna().reset_index(drop=True)
-    
+    df["Qrt"] = ( # Cycling encoding for quarter number
+        df["Qrt"].apply(lambda x: np.sin(x * (1 / 4) * (2 * np.pi))).astype("int32")
+    )
+
+    # Add
+
+    full_df = df.dropna().reset_index(drop=True)
+    full_df = full_df[full_df['Year'] <= 2020]
+
     #### 3-year backtesting
 
-    # insample: ~2017 Q4
-    # outsample: 2018 Q1 ~
+    # in sample: ~2017 Q4
+    # out sample: 2018 Q1 ~ 2020 Q4
 
-    insample_df = df[df["Year"] <= insample_end_year]
-    outsample_df = df[df["Year"] > insample_end_year]
+    insample_df = full_df[full_df["Year"] <= insample_end_year]
+    outsample_df = full_df[(full_df["Year"] > insample_end_year)]
 
-    return (insample_df, outsample_df, df)
+    return insample_df, outsample_df, full_df
+
