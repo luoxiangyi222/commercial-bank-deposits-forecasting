@@ -9,7 +9,7 @@ def get_SLR_analysis_results(
         X, y, selected_criteria=None,
 ):
     if selected_criteria is None:
-        selected_criteria = ["Adj. R-squared", "AIC", "BIC", "Prob (F-statistic)", ]
+        selected_criteria = ['R-squared',"Adj. R-squared", "AIC", "BIC", "Prob (F-statistic)", ]
 
     df_to_concat = []
     original_y = y.copy()
@@ -55,6 +55,7 @@ class MyLR:
 
         self.train_X = train_X
         self.train_y = train_y
+        self.train_predict_y = None
         self.N, self.D = train_X.shape
 
         # print(self.N, self.D)
@@ -65,7 +66,9 @@ class MyLR:
         # !!! Don't forget to add bias column
         self.model = sm.OLS(self.train_y, add_constant(self.train_X))
         self.fitted_model = self.model.fit()
+        self.train_predict_y = self.fitted_model.predict(add_constant(self.train_X))
         self.train_result_tables = self.fitted_model.summary2().tables
+        
 
     def predict(self, X):
         X = sm.add_constant(X)
@@ -88,6 +91,8 @@ class MyLR:
         res_df = res_df.iloc[1:]
 
         compulsory_cols = list(res_df.columns[:6])
+        
+        # display(res_df)
 
         if selected_metrics:
             res_df = res_df[compulsory_cols + selected_metrics]

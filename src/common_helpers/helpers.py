@@ -1,6 +1,7 @@
 from sklearn.model_selection import KFold
 import itertools
 import pandas as pd
+import ast
 
 
 def dict_to_dataframe(a_dict):
@@ -41,3 +42,7 @@ def get_k_fold_index_list(df, n_splits=5, random_state=None, shuffle=False):
         k_fold_index_ls.append(train_test_pair)
 
     return k_fold_index_ls
+
+
+def listStr_to_list(list_str):
+    return ast.literal_eval(list_str)
