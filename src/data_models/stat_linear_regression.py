@@ -4,14 +4,14 @@ import statsmodels.api as sm
 from statsmodels.tools import add_constant
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
 
-from src.data_models.model_eval import MPE
+from src.data_models.model_eval import *
 
 
 def get_SLR_analysis_results(
         X, y, selected_criteria=None,
 ):
     if selected_criteria is None:
-        selected_criteria = ['R-squared',"Adj. R-squared", "AIC", "BIC", "Prob (F-statistic)", ]
+        selected_criteria = ['R-squared', "Adj. R-squared", "AIC", "BIC", "Prob (F-statistic)", ]
 
     df_to_concat = []
     original_y = y.copy()
@@ -66,6 +66,9 @@ class MyLR:
         self.test_y = None
         self.test_pred_y = None
 
+        # evaluation
+        self.eval_df = None
+
         # train linear regression model
         self.train()
 
@@ -81,37 +84,66 @@ class MyLR:
         return self.fitted_model.predict(X)
 
     def forecast(self, test_X, test_y):
-        pass
+        self.test_X = test_X
+        self.test_y = test_y
+        self.test_pred_y = self.predict(test_X)
+        return self.test_pred_y
 
     def get_train_summary(self):
         summary = self.fitted_model.summary2()
         return summary
 
-    def get_train_eval(self, selected_metrics: list = None):
-        res_df = self.train_result_tables[0]
+    def add_test_eval(self):
+        """
+        Forecast function should have been called to ensure the test_pred_y exist, otherwise should return False.
+        :return: [bool] to show whether evaluation metrics for test dataset has been added.
+        """
+        if self.test_pred_y:
+            self.eval_df["test_RMSE"] = RMSE(self.test_y, self.test_pred_y)
+            self.eval_df["test_R2"] = R2(self.test_y, self.test_pred_y)
+            self.eval_df["test_MPE_1y"] = MPE(self.test_y[:4], self.test_pred_y[:4])
+            self.eval_df["test_MPE_2y"] = MPE(self.test_y[:8], self.test_pred_y[:8])
+            self.eval_df["test_MPE_3y"] = MPE(self.test_y[:12], self.test_pred_y[:12])
+            self.eval_df["test_MAPE_1y"] = MAPE(self.test_y[:4], self.test_pred_y[:4])
+            self.eval_df["test_MAPE_2y"] = MAPE(self.test_y[:8], self.test_pred_y[:8])
+            self.eval_df["test_MAPE_3y"] = MAPE(self.test_y[:12], self.test_pred_y[:12])
+            return True
+        else:
+            return False
 
-        part1 = res_df[[0, 1]]
-        part2 = res_df[[2, 3]]
-        part2.columns = part1.columns
-        res_df = pd.concat([part1, part2])
+    def add_train_eval(self, selected_metrics: list = None):
+        """
+        This should be called after self.train().Compute evaluation metrics for training dataset.
+        """
+        if self.train_result_tables:
+            res_df = self.train_result_tables[0]
 
-        res_df = res_df.T
-        res_df.columns = res_df.iloc[0].apply(lambda s: s.strip().replace(":", ""))
-        res_df = res_df.iloc[1:]
+            # format the dataframe into two columns/rows
+            part1 = res_df[[0, 1]]
+            part2 = res_df[[2, 3]]
+            part2.columns = part1.columns
+            res_df = pd.concat([part1, part2])
 
-        compulsory_cols = list(res_df.columns[:6])
+            res_df = res_df.T
+            res_df.columns = res_df.iloc[0].apply(lambda s: s.strip().replace(":", ""))
+            res_df = res_df.iloc[1:]
 
-        # add customized metrics here
-        res_df['train_RMSE'] = np.sqrt(mean_squared_error(self.train_y, self.train_pred_y))
-        res_df['train_R2'] = r2_score(self.train_y, self.train_pred_y)
-        res_df['train_MPE'] = MPE(self.train_y, self.train_pred_y)
-        res_df['train_MAPE'] = mean_absolute_percentage_error(self.train_y, self.train_pred_y)
+            compulsory_cols = list(res_df.columns[:6])
 
-        # display(res_df)
-        if selected_metrics:
-            res_df = res_df[compulsory_cols + selected_metrics]
+            # add customized metrics into eval df
+            res_df['train_RMSE'] = np.sqrt(mean_squared_error(self.train_y, self.train_pred_y))
+            res_df['train_R2'] = r2_score(self.train_y, self.train_pred_y)
+            res_df['train_MPE'] = MPE(self.train_y, self.train_pred_y)
+            res_df['train_MAPE'] = mean_absolute_percentage_error(self.train_y, self.train_pred_y)
 
-        return res_df
+            if selected_metrics:
+                res_df = res_df[compulsory_cols + selected_metrics]
+
+            # save it as class variable
+            self.eval_df = res_df
+            return True
+        else:
+            return False
 
 
 

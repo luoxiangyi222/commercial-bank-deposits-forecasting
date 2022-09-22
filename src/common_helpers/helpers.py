@@ -1,5 +1,4 @@
-from sklearn.model_selection import KFold
-import itertools
+
 import pandas as pd
 import ast
 
